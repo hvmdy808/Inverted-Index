@@ -47,7 +47,9 @@ public class Test {
             phrase = in.readLine();
 /// -3- **** complete here ****
             String result = index.find_24_01(phrase);
-            System.out.println(result);
+            if (!result.isEmpty()){
+                System.out.println(result);
+            }
         } while (!phrase.isEmpty());
 
     }

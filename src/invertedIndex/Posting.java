@@ -4,23 +4,34 @@
  */
 package invertedIndex;
 
+import java.util.ArrayList;
+
 /**
  *
  * @author ehab
  */
- 
 public class Posting {
 
     public Posting next = null;
     int docId;
     int dtf = 1;
+    public ArrayList<Integer> positions;
 
-    Posting(int id, int t) {
+    Posting(int id, int firstPosition) {
         docId = id;
-        dtf=t;
+        dtf = 1;
+        positions = new ArrayList<>();
+        positions.add(firstPosition);
     }
-    
+
     Posting(int id) {
         docId = id;
+        dtf = 1;
+        positions = new ArrayList<>();
+    }
+
+    public void addPosition(int position) {
+        this.positions.add(position);
+        this.dtf++;
     }
 }

@@ -79,62 +79,55 @@ public class Index5 {
                     sources.put(fid, new SourceRecord(fid, fileName, fileName, "notext"));
                 }
                 String ln;
-                int flen = 0;
+                int currentPosition = 1; 
+                
                 while ((ln = file.readLine()) != null) {
-                    /// -2- **** complete here ****
-                    ///**** hint   flen +=  ________________(ln, fid);
-                    flen += indexOneLine(ln, fid);
+                   
+                    currentPosition = indexOneLine(ln, fid, currentPosition); 
                 }
-                sources.get(fid).length = flen;
+                sources.get(fid).length = currentPosition - 1; 
 
             } catch (IOException e) {
                 System.out.println("File " + fileName + " not found. Skip it");
             }
             fid++;
         }
-        //   printDictionary();
     }
 
     //----------------------------------------------------------------------------  
-    public int indexOneLine(String ln, int fid) {
-        int flen = 0;
-
+   //
+    public int indexOneLine(String ln, int fid, int currentPosition) {
         String[] words = ln.split("\\W+");
-      //   String[] words = ln.replaceAll("(?:[^a-zA-Z0-9 -]|(?<=\\w)-(?!\\S))", " ").toLowerCase().split("\\s+");
-        flen += words.length;
         for (String word : words) {
             word = word.toLowerCase();
+            
             if (stopWord(word)) {
+                currentPosition++; 
                 continue;
             }
             word = stemWord(word);
-            // check to see if the word is not in the dictionary
-            // if not add it
+            
             if (!index.containsKey(word)) {
                 index.put(word, new DictEntry());
             }
-            // add document id to the posting list
+            
             if (!index.get(word).postingListContains(fid)) {
-                index.get(word).doc_freq += 1; //set doc freq to the number of doc that contain the term 
+                index.get(word).doc_freq += 1; 
                 if (index.get(word).pList == null) {
-                    index.get(word).pList = new Posting(fid);
+                    index.get(word).pList = new Posting(fid, currentPosition); 
                     index.get(word).last = index.get(word).pList;
                 } else {
-                    index.get(word).last.next = new Posting(fid);
+                    index.get(word).last.next = new Posting(fid, currentPosition); 
                     index.get(word).last = index.get(word).last.next;
                 }
             } else {
-                index.get(word).last.dtf += 1;
+                index.get(word).last.addPosition(currentPosition); 
             }
-            //set the term_fteq in the collection
+            
             index.get(word).term_freq += 1;
-            if (word.equalsIgnoreCase("lattice")) {
-
-                System.out.println("  <<" + index.get(word).getPosting(1) + ">> " + ln);
-            }
-
+            currentPosition++; 
         }
-        return flen;
+        return currentPosition;
     }
 
 //----------------------------------------------------------------------------  
@@ -160,49 +153,55 @@ public class Index5 {
     }
 
     //----------------------------------------------------------------------------  
-    Posting intersect(Posting pL1, Posting pL2) {
-///****  -1-   complete after each comment ****
-//   INTERSECT ( p1 , p2 )
-//          1  answer ←      {}
+   Posting intersect(Posting pL1, Posting pL2) {
         Posting answer = null;
         Posting last = null;
-//      2 while p1  != NIL and p2  != NIL
-     
-//          3 do if docID ( p 1 ) = docID ( p2 )
- 
-//          4   then ADD ( answer, docID ( p1 ))
-                // answer.add(pL1.docId);
- 
-//          5       p1 ← next ( p1 )
-//          6       p2 ← next ( p2 )
- 
- //          7   else if docID ( p1 ) < docID ( p2 )
-            
-//          8        then p1 ← next ( p1 )
-//          9        else p2 ← next ( p2 )
- 
-//      10 return answer
 
         while (pL1 != null && pL2 != null) {
             if (pL1.docId == pL2.docId) {
-                Posting newPosting = new Posting(pL1.docId, pL1.dtf);
-                if (answer == null) {
-                    answer = newPosting;
-                    last = newPosting;
-                }else {
-                    last.next = newPosting;
-                    last = newPosting;
+                
+                java.util.ArrayList<Integer> pos1 = pL1.positions;
+                java.util.ArrayList<Integer> pos2 = pL2.positions;
+                java.util.ArrayList<Integer> matchPositions = new java.util.ArrayList<>();
+
+                int i = 0, j = 0;
+                while (i < pos1.size() && j < pos2.size()) {
+                    if (pos2.get(j) == pos1.get(i) + 1) { 
+                 
+                        matchPositions.add(pos2.get(j)); 
+                        i++;
+                        j++;
+                    } else if (pos2.get(j) > pos1.get(i) + 1) {
+                        i++;
+                    } else {
+                        j++;
+                    }
                 }
+
+                
+                if (!matchPositions.isEmpty()) {
+                    Posting newPosting = new Posting(pL1.docId, matchPositions.get(0));
+                    newPosting.positions = matchPositions; 
+                    newPosting.dtf = matchPositions.size();
+
+                    if (answer == null) {
+                        answer = newPosting;
+                        last = newPosting;
+                    } else {
+                        last.next = newPosting;
+                        last = newPosting;
+                    }
+                }
+        
                 pL1 = pL1.next;
                 pL2 = pL2.next;
-            }else if (pL1.docId < pL2.docId) {
+                
+            } else if (pL1.docId < pL2.docId) {
                 pL1 = pL1.next;
-            }
-            else {
+            } else {
                 pL2 = pL2.next;
             }
         }
-
         return answer;
     }
 

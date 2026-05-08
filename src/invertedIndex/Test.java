@@ -8,11 +8,14 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.List;
+import java.util.*;
 
 /**
  *
  * @author ehab
  */
+/*
 public class Test {
 
     public static void main(String args[]) throws IOException {
@@ -76,4 +79,43 @@ public class Test {
 
         System.out.println("Goodbye!");
     }
+}
+
+ */
+
+
+public class Test {
+    public static void main(String[] args) {
+
+        WebCrawler crawler =
+                new WebCrawler(10);
+
+        crawler.crawl(
+                "https://en.wikipedia.org/wiki/List_of_pharaohs"
+        );
+
+        List<WebCrawler.CrawledPage> pages =
+                crawler.getPages();
+
+        Index5 index = new Index5();
+
+        // build index
+        index.buildIndexFromPages(pages);
+        for (Integer docId : index.docVectors.keySet()) {
+
+            System.out.println("\nDOC ID: " + docId);
+
+            HashMap<String, Double> vec =
+                    index.docVectors.get(docId);
+
+            for (String term : vec.keySet()) {
+
+                System.out.println(
+                        term + " → " + vec.get(term)
+                );
+            }
+        }
+    }
+
+
 }

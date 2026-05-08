@@ -9,6 +9,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.Writer;
 import java.io.IOException;
+import java.util.List;
 import java.io.InputStreamReader;
 import static java.lang.Math.log10;
 import static java.lang.Math.sqrt;
@@ -29,6 +30,14 @@ public class Index5 {
     public Map<Integer, SourceRecord> sources;  // store the doc_id and the file name.
 
     public HashMap<String, DictEntry> index; // THe inverted index
+
+    // IDF value for each term
+    HashMap<String, Double> idf = new HashMap<>();
+
+    // document vectors
+    HashMap<Integer,
+            HashMap<String, Double>> docVectors
+            = new HashMap<>();
 
      //--------------------------------------------
      // Constructor function that creates an empty index
@@ -109,6 +118,107 @@ public class Index5 {
             }
             fid++;  // next document gets the next ID number
         }
+    }
+    //----------------------------------------------------------------------------
+    /**
+     * Compute IDF for all indexed terms
+     */
+    public void computeIDF() {
+
+        // loop through all words
+        for (String term : index.keySet()) {
+
+            // get dictionary entry
+            DictEntry entry = index.get(term);
+
+            // DF = number of docs containing term
+            int df = entry.doc_freq;
+
+            // IDF formula
+            double value =
+                    Math.log((double) N / df);
+
+            // save IDF
+            idf.put(term, value);
+        }
+
+        System.out.println(
+                "IDF calculated successfully.");
+    }
+
+    /**
+     * Build TF-IDF vectors for all documents
+     */
+    public void buildTFIDFVectors() {
+
+        // loop over all words in index
+        for (String term : index.keySet()) {
+
+            DictEntry entry = index.get(term);
+
+            double idfValue = idf.get(term);
+
+            Posting p = entry.pList;
+
+            while (p != null) {
+
+                int docId = p.docId;
+
+                int tf = p.dtf; // term frequency in document
+
+                double weight = tf * idfValue;
+
+                // get or create vector for document
+                docVectors.putIfAbsent(
+                        docId,
+                        new HashMap<>()
+                );
+
+                docVectors
+                        .get(docId)
+                        .put(term, weight);
+
+                p = p.next;
+            }
+        }
+
+        System.out.println(
+                "TF-IDF Vectors built successfully.");
+    }
+
+    /**
+     * Build inverted index from crawled pages
+     */
+    public void buildIndexFromPages(
+            List<WebCrawler.CrawledPage> pages) {
+
+        N = pages.size();
+
+        for (WebCrawler.CrawledPage page : pages) {
+
+            int fid = page.id;
+
+            // store source info
+            sources.put(fid,
+                    new SourceRecord(
+                            fid,
+                            page.url,
+                            page.title,
+                            page.text
+                    ));
+
+            // index the page text
+            indexOneLine(page.text, fid, 1);
+        }
+        // compute IDF automatically
+        computeIDF();
+
+        //compute TF-IDF
+        buildTFIDFVectors();
+
+        System.out.println(
+                "Index + TF-IDF built successfully.");
+
     }
 
     //----------------------------------------------------------------------------

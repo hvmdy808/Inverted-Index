@@ -165,26 +165,67 @@ public class Test {
             }
 
             /// //////////////////////////////////
+            /// //////////////////////////////////
             // cosine similarity calculations
-            // score = dotProduct / document_norm
+
             HashMap<Integer, Double> scores = new HashMap<>();
-            for(int docId: index.docVectors.keySet()) {
-                HashMap<String, Double> docVector = index.docVectors.get(docId);
-                double dotProduct = 0.0;
 
-                // get dot product
-                for(String term: docVector.keySet()) {
-                    if(queryVector.containsKey(term))
-                        dotProduct += queryVector.get(term) * docVector.get(term);
-                }
 
-                // calculate norm then the score and add it into scores
-                double norm = index.sources.get(docId).norm;
-                if(norm>0)
-                    scores.put(docId, dotProduct/norm);
-                else scores.put(docId, 0.0);
+            // Step 1: Compute Query Norm
+            double queryNorm = 0.0;
+
+            // sum(weight²)
+            for(double weight : queryVector.values()) {
+
+                queryNorm += weight * weight;
             }
 
+            // sqrt(sum(weight²))
+            queryNorm = Math.sqrt(queryNorm);
+
+
+            // Step 2: Compare Query with Docs
+            for(int docId : index.docVectors.keySet()) {
+
+                // get current document vector
+                HashMap<String, Double> docVector =
+                        index.docVectors.get(docId);
+
+                double dotProduct = 0.0;
+
+                // Step 3: Compute Dot Product
+                // loop over all terms in the document
+                for(String term : docVector.keySet()) {
+
+                    // if the same term exists in query
+                    if(queryVector.containsKey(term)) {
+
+                        // dotProduct += queryWeight * docWeight
+                        dotProduct +=
+                                queryVector.get(term)
+                                        *
+                                        docVector.get(term);
+                    }
+                }
+
+                // Step 4: Get Document Norm
+                double docNorm =
+                        index.sources.get(docId).norm;
+
+                // Step 5: Compute Cosine Similarity
+                double similarity = 0.0;
+
+                // avoid division by zero
+                if(docNorm > 0 && queryNorm > 0) {
+
+                    similarity =
+                            dotProduct /
+                                    (docNorm * queryNorm);
+                }
+
+                // store final score
+                scores.put(docId, similarity);
+            }
 
             // rannk top K = 10 and print result
 

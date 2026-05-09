@@ -177,7 +177,32 @@ public class Test {
                 continue;
             }
 
-            // Cosine similarity: score = dot(query, doc) / norm(doc)
+            // a query can appear in all the docs so, the idf = log(N/df) = log(N/N) = 0 => tf-idf = 0
+            boolean hasNonZeroWeight = false;
+            for(double weight : queryVector.values()) {
+                if(weight > 0) {
+                    hasNonZeroWeight = true;
+                    break;
+                }
+            }
+            if(!hasNonZeroWeight){
+                System.out.println(
+                        "No meaningful query terms found in the index (appears in all documents -> idf = 0). Try again."
+                );
+                continue;
+            }
+
+            // Addition: we will also use the query vector's norm so cos = dot(query, doc) / (norm(doc) * norm(query))
+            double sumOfSquares = 0.0;
+            for (double weight : queryVector.values()) {
+                sumOfSquares += weight * weight;
+            }
+            double queryNorm = Math.sqrt(sumOfSquares);
+
+            System.out.println("Query norm computed successfully.");
+
+
+            // Cosine similarity: score = dot(query, doc) / (norm(doc) * norm(query))
             HashMap<Integer, Double> scores = new HashMap<>();
             for(int docId: index.docVectors.keySet()) {
                 HashMap<String, Double> docVector = index.docVectors.get(docId);
@@ -192,7 +217,7 @@ public class Test {
                 // calculate norm then the score and add it into scores
                 double norm = index.sources.get(docId).norm;
                 if(norm>0)
-                    scores.put(docId, dotProduct/norm);
+                    scores.put(docId, dotProduct/(norm * queryNorm));
                 else scores.put(docId, 0.0);
             }
 

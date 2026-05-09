@@ -85,7 +85,7 @@ public class Test {
 
 
 public class Test {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException{
 
         WebCrawler crawler =
                 new WebCrawler(10);
@@ -101,20 +101,112 @@ public class Test {
 
         // build index
         index.buildIndexFromPages(pages);
-        for (Integer docId : index.docVectors.keySet()) {
+//        for (Integer docId : index.docVectors.keySet()) {
+//
+//            System.out.println("\nDOC ID: " + docId);
+//
+//            HashMap<String, Double> vec =
+//                    index.docVectors.get(docId);
+//
+//            for (String term : vec.keySet()) {
+//
+//                System.out.println(
+//                        term + " → " + vec.get(term)
+//                );
+//            }
+//        }
 
-            System.out.println("\nDOC ID: " + docId);
-
-            HashMap<String, Double> vec =
-                    index.docVectors.get(docId);
-
-            for (String term : vec.keySet()) {
-
-                System.out.println(
-                        term + " → " + vec.get(term)
-                );
+        // compute document norms -> to normalize cosine similarity score
+        for (int docId: index.docVectors.keySet()) {
+            double sumOfSquares = 0.0;
+            for(double weight: index.docVectors.get(docId).values()) {
+                sumOfSquares += weight * weight;
             }
+            index.sources.get(docId).norm = Math.sqrt(sumOfSquares);
         }
+        System.out.println("Document norms computed successfully");
+
+        /////////////////////////////////////////
+        // Query processing
+        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+        String queryString;
+        System.out.println("\n===================================");
+        System.out.println("Search Ready. ");
+        do{
+            System.out.println("Enter query string (blank to exit): ");
+            queryString = in.readLine();
+            if(queryString==null || queryString.trim().isEmpty())
+                break;
+
+            //////////////////////////
+            // build query vector
+            HashMap<String, Double> queryVector = new HashMap<>();
+            String[] words = queryString.split("\\W+");
+
+            HashMap<String, Integer> queryTF = new HashMap<>();
+            for(String word: words) {
+                word = word.toLowerCase();
+                if(index.stopWord(word)) // skip stop words
+                    continue;
+                word = index.stemWord(word);
+                queryTF.put(word, queryTF.getOrDefault(word, 0) + 1);
+            }
+
+            for(String word: queryTF.keySet()) {
+                if(index.idf.containsKey(word)){ // if term exists in index get its weight
+                    double weight = queryTF.get(word) * index.idf.get(word);
+                    queryVector.put(word, weight);
+                }
+            }
+
+            if(queryVector.isEmpty()){
+                System.out.println("No query terms found in the index. Try again.");
+                continue;
+            }
+
+            /// //////////////////////////////////
+            // cosine similarity calculations
+            // score = dotProduct / document_norm
+            HashMap<Integer, Double> scores = new HashMap<>();
+            for(int docId: index.docVectors.keySet()) {
+                HashMap<String, Double> docVector = index.docVectors.get(docId);
+                double dotProduct = 0.0;
+
+                // get dot product
+                for(String term: docVector.keySet()) {
+                    if(queryVector.containsKey(term))
+                        dotProduct += queryVector.get(term) * docVector.get(term);
+                }
+
+                // calculate norm then the score and add it into scores
+                double norm = index.sources.get(docId).norm;
+                if(norm>0)
+                    scores.put(docId, dotProduct/norm);
+                else scores.put(docId, 0.0);
+            }
+
+
+            // rannk top K = 10 and print result
+
+            List<Map.Entry<Integer,Double>> ranked = new ArrayList<>(scores.entrySet());
+            ranked.sort((a,b) -> Double.compare(b.getValue(), a.getValue()));
+
+            int k = Math.min(10,ranked.size());
+            System.out.println("===  Top " + k + " Results for: " + queryString + "  ===" );
+
+            for(int i=0; i<k; i++) {
+                int docId = ranked.get(i).getKey();
+                double score = ranked.get(i).getValue();
+
+                if(score == 0.0)
+                    break;
+
+                System.out.printf("%d. Score: %.4f%n", i + 1, score);
+                System.out.println("Title   : " + index.sources.get(docId).title);
+                System.out.println("URL     : " + index.sources.get(docId).URL);
+            }
+
+        }while(true);
     }
 
 

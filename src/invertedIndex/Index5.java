@@ -135,8 +135,7 @@ public class Index5 {
             int df = entry.doc_freq;
 
             // IDF formula
-            double value =
-                    Math.log((double) N / df);
+            double value = Math.log10((double) N / df);
 
             // save IDF
             idf.put(term, value);
@@ -208,7 +207,8 @@ public class Index5 {
                     ));
 
             // index the page text
-            indexOneLine(page.text, fid, 1);
+            int finalPosition = indexOneLine(page.text, fid,1);
+            sources.get(fid).length = finalPosition -1;
         }
         // compute IDF automatically
         computeIDF();

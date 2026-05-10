@@ -88,8 +88,19 @@ public class Test {
 
             if (phrase == null || phrase.trim().isEmpty()) break;
 
+            String[] words = phrase.split("\\W+");
+            String input = "";
+
+            for(String word: words) {
+                word = word.toLowerCase();
+                if(index.stopWord(word)) // skip stop words
+                    continue;
+                word = index.stemWord(word);
+                input = input + word + " ";
+            }
+
             try {
-                String result = index.find_24_01(phrase);
+                String result = index.find_24_01(input);
                 if (result != null && !result.isEmpty()) {
                     System.out.println("Found in:\n" + result);
                 } else {
